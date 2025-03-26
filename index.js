@@ -4,8 +4,13 @@ import { analyzeMessage } from './utils/analyze.js';
 import axios from 'axios';
 
 dotenv.config();
+
 const app = express();
 app.use(express.json());
+
+app.get('/healthcheck', (req, res) => {
+  res.json({ status: 'Mist Sales Bot работает ✅' });
+});
 
 app.post('/webhook', async (req, res) => {
   try {
@@ -28,7 +33,6 @@ app.post('/webhook', async (req, res) => {
       return res.status(200).send('Ignored');
     }
 
-    // Фильтр служебных сообщений
     const technical = ['moved to', 'field value', 'invoice', 'robot', 'delivered'];
     const isTechnical = technical.some(t => message.toLowerCase().includes(t));
 
@@ -39,7 +43,6 @@ app.post('/webhook', async (req, res) => {
 
     console.log('🧠 Отправляем на анализ в Mist AI...');
     const result = await analyzeMessage(message);
-
     console.log('✅ Ответ от Mist AI:\n', JSON.stringify(result, null, 2));
 
     const noteText = `
@@ -67,7 +70,7 @@ app.post('/webhook', async (req, res) => {
       }
     });
 
-    console.log('✅ Комментарий успешно добавлен в сделку!');
+    console.log('✅ Комментарий успешно добавлен в Kommo!');
     res.sendStatus(200);
   } catch (err) {
     console.error('❌ Ошибка в Webhook:', err.message);
@@ -75,3 +78,5 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`🚀 Mist Sales Bot запущен на http://localhost:${PORT}`));
