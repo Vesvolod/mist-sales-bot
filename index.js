@@ -14,31 +14,33 @@ app.get('/healthcheck', (req, res) => {
 
 app.post('/webhook', async (req, res) => {
   try {
-    const data = req.body;
+    console.log('📥 Получен Webhook от Kommo:');
+    console.dir(req.body, { depth: null });
 
-    console.log('📥 Получен Webhook от Kommo:\n', JSON.stringify(data, null, 2));
+    const msg = req.body?.message?.add?.[0];
 
-    const payload = data.payload || {};
+    if (!msg) {
+      console.log('⚠️ Webhook не содержит сообщения');
+      return res.status(200).send('No message found');
+    }
 
-    const message = payload.text || '';
-    const direction = payload.direction || '';
-    const entityId = payload.entity_id;
-    const entityType = payload.entity_type;
+    const message = msg.text || '';
+    const direction = msg.type === 'incoming' ? 'in' : 'out';
+    const entityId = msg.entity_id;
+    const entityType = msg.entity_type;
 
     console.log(`➡️ direction: ${direction}`);
     console.log(`🧾 entity_type: ${entityType}`);
     console.log(`📌 entity_id: ${entityId}`);
     console.log(`💬 message: ${message}`);
 
-    if (!message || !entityId || !entityType || direction !== 'in') {
-      console.log('⚠️ Пропущено: либо не входящее сообщение, либо отсутствуют поля');
+    if (!message || direction !== 'in' || !entityId || entityType !== 'lead') {
+      console.log('⚠️ Пропущено: либо не входящее сообщение, либо пустое, либо не сделка');
       return res.status(200).send('Ignored');
     }
 
     const technical = ['moved to', 'field value', 'invoice', 'robot', 'delivered'];
-    const isTechnical = technical.some(t => message.toLowerCase().includes(t));
-
-    if (isTechnical) {
+    if (technical.some(t => message.toLowerCase().includes(t))) {
       console.log('🔁 Пропущено: техническое сообщение');
       return res.status(200).send('Technical message ignored');
     }
@@ -56,23 +58,29 @@ app.post('/webhook', async (req, res) => {
 • 📈 Рекомендация: ${result.sales_recommendation}
     `.trim();
 
-    const url = `https://${process.env.KOMMO_DOMAIN}/api/v4/${entityType}s/${entityId}/notes`;
+    console.log('📝 Пытаемся записать TextNote через Kommo API v2...');
 
-    console.log(`📝 Пытаемся записать комментарий в Kommo: ${url}`);
-
-    await axios.post(url, [
-      {
-        note_type: "common",
-        params: { text: noteText }
+    await axios.post(`https://${process.env.KOMMO_DOMAIN}/private/api/v2/json/leads/note/add`, {
+      request: {
+        leads: {
+          note: [
+            {
+              note_type: "4", // TextNote
+              element_type: "2", // 2 = сделка
+              element_id: entityId,
+              text: noteText
+            }
+          ]
+        }
       }
-    ], {
+    }, {
       headers: {
         Authorization: process.env.KOMMO_TOKEN,
         'Content-Type': 'application/json'
       }
     });
 
-    console.log('✅ Комментарий успешно добавлен в Kommo!');
+    console.log('✅ Комментарий успешно добавлен в сделку!');
     res.sendStatus(200);
   } catch (err) {
     console.error('❌ Ошибка в Webhook:', err.message);
