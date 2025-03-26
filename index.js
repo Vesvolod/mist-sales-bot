@@ -42,7 +42,7 @@ app.post('/webhook', async (req, res) => {
     }
 
     console.log('📥 Пришёл Webhook:');
-', JSON.stringify(req.body, null, 2));
+    console.log(JSON.stringify(req.body, null, 2));
 
     const msg = req.body['message[add][0][text]']
       ? {
@@ -78,13 +78,11 @@ app.post('/webhook', async (req, res) => {
     console.log(`💬 Входящее сообщение: "${text}" (lead_id: ${entityId})`);
 
     const chatHistory = await getChatHistory(entityId);
-    const fullPrompt = `Контекст переписки:
-${chatHistory}
-\nНовое сообщение клиента: ${text}`;
+    const fullPrompt = `Контекст переписки:\n${chatHistory}\n\nНовое сообщение клиента: ${text}`;
 
     const result = await analyzeMessage(fullPrompt);
-    console.log('✅ Ответ от Mist AI:
-', JSON.stringify(result, null, 2));
+    console.log('✅ Ответ от Mist AI:');
+    console.log(JSON.stringify(result, null, 2));
 
     const noteText = `
 🤖 *AI-анализ переписки:*
