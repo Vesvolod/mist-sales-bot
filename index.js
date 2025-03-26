@@ -1,26 +1,28 @@
+// index.js
 import express from 'express';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import axios from 'axios';
 import bodyParser from 'body-parser';
 import { analyzeMessage } from './utils/analyze.js';
+import { getChatHistory } from './utils/getChatHistory.js';
+import { handleOutgoingMessage } from './utils/handleOutgoing.js';
 
 dotenv.config();
 
 const app = express();
 
-// ✅ Поддержка x-www-form-urlencoded
+// Поддержка x-www-form-urlencoded (Wazzup/Kommo)
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// 🔍 Healthcheck
+// Healthcheck endpoint
 app.get('/healthcheck', (req, res) => {
   res.json({ status: 'Mist Sales Bot работает ✅' });
 });
 
-// 🚀 Основной Webhook
 app.post('/webhook', async (req, res) => {
   try {
-    // 🔐 Подпись (если есть)
+    // Проверка подписи, если есть
     const signature = req.headers['x-signature'];
     const secret = process.env.KOMMO_SECRET;
 
@@ -34,41 +36,55 @@ app.post('/webhook', async (req, res) => {
         console.warn('❌ Неверная подпись Kommo');
         return res.status(403).send('Invalid signature');
       }
-
       console.log('✅ Подпись Kommo подтверждена');
     } else {
       console.warn('⚠️ Подписи нет — продолжаем без валидации');
     }
 
-    console.log('📥 Пришёл Webhook:\n', JSON.stringify(req.body, null, 2));
+    console.log('📥 Пришёл Webhook:
+', JSON.stringify(req.body, null, 2));
 
-    const msg = req.body?.['message[add][0][text]']
+    const msg = req.body['message[add][0][text]']
       ? {
           text: req.body['message[add][0][text]'],
           type: req.body['message[add][0][type]'],
           entity_id: req.body['message[add][0][entity_id]'],
           entity_type: req.body['message[add][0][entity_type]']
         }
-      : null;
+      : req.body.message?.add?.[0];
 
-    if (!msg || !msg.text || msg.type !== 'incoming') {
-      console.log('⚠️ Пропущено: это не входящее сообщение с текстом (или другой тип события)');
-      return res.status(200).send('Ignored');
+    if (!msg || !msg.text || !msg.type) {
+      console.log('⚠️ Пропущено: не сообщение или отсутствует текст/тип');
+      return res.status(200).send('No valid message');
+    }
+
+    if (msg.type === 'outgoing') {
+      handleOutgoingMessage(msg);
+      return res.status(200).send('Outgoing logged');
+    }
+
+    if (msg.type !== 'incoming') {
+      console.log('⚠️ Пропущено: не входящее сообщение');
+      return res.status(200).send('Not incoming');
     }
 
     const { text, entity_id: entityId, entity_type: entityType } = msg;
-
-    console.log(`💬 Получено сообщение: "${text}"`);
-    console.log(`📌 entity_id: ${entityId}`);
-    console.log(`🧾 entity_type: ${entityType}`);
 
     if (!text || !entityId || entityType !== 'lead') {
       console.log('⚠️ Пропущено: не сделка или пустой ID');
       return res.status(200).send('Invalid');
     }
 
-    const result = await analyzeMessage(text);
-    console.log('✅ Ответ от Mist AI:\n', JSON.stringify(result, null, 2));
+    console.log(`💬 Входящее сообщение: "${text}" (lead_id: ${entityId})`);
+
+    const chatHistory = await getChatHistory(entityId);
+    const fullPrompt = `Контекст переписки:
+${chatHistory}
+\nНовое сообщение клиента: ${text}`;
+
+    const result = await analyzeMessage(fullPrompt);
+    console.log('✅ Ответ от Mist AI:
+', JSON.stringify(result, null, 2));
 
     const noteText = `
 🤖 *AI-анализ переписки:*
