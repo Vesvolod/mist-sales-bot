@@ -18,10 +18,12 @@ app.post('/webhook', async (req, res) => {
 
     console.log('📥 Получен Webhook от Kommo:\n', JSON.stringify(data, null, 2));
 
-    const message = data.message?.text || '';
-    const direction = data.message?.direction || '';
-    const entityId = data.message?.entity_id;
-    const entityType = data.message?.entity_type;
+    const payload = data.payload || {};
+
+    const message = payload.text || '';
+    const direction = payload.direction || '';
+    const entityId = payload.entity_id;
+    const entityType = payload.entity_type;
 
     console.log(`➡️ direction: ${direction}`);
     console.log(`🧾 entity_type: ${entityType}`);
@@ -29,7 +31,7 @@ app.post('/webhook', async (req, res) => {
     console.log(`💬 message: ${message}`);
 
     if (!message || !entityId || !entityType || direction !== 'in') {
-      console.log('⚠️ Пропущено: либо нет текста, либо не входящее сообщение');
+      console.log('⚠️ Пропущено: либо не входящее сообщение, либо отсутствуют поля');
       return res.status(200).send('Ignored');
     }
 
