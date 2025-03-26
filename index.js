@@ -5,7 +5,6 @@ import crypto from 'crypto';
 import axios from 'axios';
 import bodyParser from 'body-parser';
 import { analyzeMessage } from './utils/analyze.js';
-import { getChatHistory } from './utils/getChatHistory.js';
 import { handleOutgoingMessage } from './utils/handleOutgoing.js';
 
 dotenv.config();
@@ -77,8 +76,7 @@ app.post('/webhook', async (req, res) => {
 
     console.log(`💬 Входящее сообщение: "${text}" (lead_id: ${entityId})`);
 
-    const chatHistory = await getChatHistory(entityId);
-    const fullPrompt = `Контекст переписки:\n${chatHistory}\n\nНовое сообщение клиента: ${text}`;
+    const fullPrompt = `Новое сообщение клиента: ${text}`;
 
     const result = await analyzeMessage(fullPrompt);
     console.log('✅ Ответ от Mist AI:');
