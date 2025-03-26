@@ -41,7 +41,7 @@ app.post('/webhook', async (req, res) => {
       console.warn('⚠️ Подписи нет — продолжаем без валидации');
     }
 
-    console.log('📥 Пришёл Webhook:
+    console.log('📥 Пришёл Webhook:');
 ', JSON.stringify(req.body, null, 2));
 
     const msg = req.body['message[add][0][text]']
