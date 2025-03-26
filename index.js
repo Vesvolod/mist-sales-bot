@@ -21,42 +21,28 @@ app.get('/healthcheck', (req, res) => {
 
 app.post('/webhook', async (req, res) => {
   try {
-    const signature = req.headers['x-signature'];
-    const secret = process.env.KOMMO_SECRET;
+    console.log('📥 RAW Webhook body:');
+    console.dir(req.body, { depth: null });
 
-    // 🔐 Если подпись есть — проверяем
-    if (signature && secret) {
-      const hmac = crypto.createHmac('sha1', secret);
-      hmac.update(req.rawBody);
-      const digest = hmac.digest('hex');
+    const msg =
+      req.body?.message?.add?.[0] ||
+      req.body?.data?.message?.[0] ||
+      req.body?.payload?.message?.[0] ||
+      req.body?.message || 
+      req.body;
 
-      if (digest !== signature) {
-        console.warn('❌ Неверная подпись Kommo Webhook');
-        return res.status(403).send('Invalid signature');
-      }
-
-      console.log('✅ Подпись Kommo подтверждена');
-    } else {
-      console.warn('⚠️ Webhook без подписи — продолжаем без валидации');
-    }
-
-    const data = req.body;
-    const msg = data?.message?.add?.[0];
-
-    if (!msg) {
-      console.log('⚠️ Webhook не содержит message.add');
-      return res.status(200).send('No message found');
-    }
+    console.log('🧾 Предположительный msg:\n', msg);
 
     const message = msg.text || '';
-    const direction = msg.type === 'incoming' ? 'in' : 'out';
-    const entityId = msg.entity_id;
-    const entityType = msg.entity_type;
+    const direction = msg.type === 'incoming' ? 'in' : msg.direction || '';
+    const entityId = msg.entity_id || msg.lead_id || msg.element_id;
+    const entityType = msg.entity_type || (msg.lead_id ? 'lead' : 'contact');
 
     console.log(`➡️ direction: ${direction}`);
     console.log(`🧾 entity_type: ${entityType}`);
     console.log(`📌 entity_id: ${entityId}`);
     console.log(`💬 message: ${message}`);
+
 
     if (!message || direction !== 'in' || !entityId || entityType !== 'lead') {
       console.log('⚠️ Пропущено: не входящее или неполное сообщение');
