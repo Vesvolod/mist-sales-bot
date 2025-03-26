@@ -56,5 +56,11 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
+// Healthcheck endpoint
+app.get('/healthcheck', (req, res) => {
+  res.json({ status: 'Mist Sales Bot работает ✅' });
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`🚀 Mist Sales Bot запущен на http://localhost:${PORT}`));
+
